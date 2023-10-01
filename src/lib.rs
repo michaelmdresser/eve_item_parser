@@ -711,15 +711,15 @@ impl Parser {
                 break;
             }
         }
-        let cleaned_string: String = match full_string.strip_suffix("*") {
+        let trimmed = full_string.trim();
+        let cleaned: String = match trimmed.strip_suffix("*") {
             Some(s) => s.to_string(),
-            None => full_string,
+            None => trimmed.to_string(),
         };
-        let trimmed = cleaned_string.trim();
-        if trimmed.is_empty() {
+        if cleaned.is_empty() {
             return Err("empty string after cleaning asterisks and trimming".to_string());
         }
-        return Ok(trimmed.to_string());
+        return Ok(cleaned.to_string());
     }
     fn quantity(&mut self) -> Result<i64, String> {
         if self.check(TokenKind::X) {
