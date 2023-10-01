@@ -834,3 +834,14 @@ pub fn parse_with_id(s: &str) -> Result<Vec<ItemWithId>, String> {
         })
         .collect()
 }
+
+pub fn lookup_id(id: u64) -> Option<String> {
+    match CODE_TO_ITEM.get(&id).copied() {
+        Some(s) => Some(s.to_string()),
+        None => None,
+    }
+}
+
+pub fn lookup_type_name(type_name: String) -> Option<u64> {
+    ITEM_TO_CODE.get(&type_name).copied()
+}
