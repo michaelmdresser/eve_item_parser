@@ -1,5 +1,5 @@
 [package]
-name = "eve-item-parser"
+name = "eve_item_parser"
 authors = ["Michael Dresser <michaelmdresser@gmail.com>"]
 version = "0.1.0"
 edition = "2021"
