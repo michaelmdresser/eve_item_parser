@@ -1,10 +1,3 @@
-#[derive(Debug, PartialEq, Clone)]
-pub struct Item {
-    id: i64,
-    name: String,
-    quantity: i64,
-}
-
 #[cfg(test)]
 mod tests {
     // Thanks to https://github.com/harrelchris/eveparse/blob/main/tests/test_parse.py for many of these test cases.
@@ -434,4 +427,221 @@ fn lex(s: &str) -> Result<Vec<Token>, Vec<LexErr>> {
         return Err(scan.errors);
     }
     return Ok(scan.tokens);
+}
+
+////////
+////////
+////////
+////////
+////////
+////////
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Item {
+    name: String,
+    quantity: i64,
+}
+impl std::fmt::Display for Item {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "({}, {})", self.name, self.quantity)
+    }
+}
+
+// Similarly, the parser is initially taken from dicelang, which is itself
+// heavily inspired by Crafting Intepreters
+struct Parser {
+    tokens: Vec<Token>,
+    current: usize,
+}
+impl Parser {
+    fn at_end(&self) -> bool {
+        match self.peek().kind {
+            TokenKind::EOF => true,
+            _ => false,
+        }
+    }
+    fn advance(&mut self) -> Token {
+        if !self.at_end() {
+            self.current += 1
+        }
+        return self.previous();
+    }
+    fn previous(&self) -> Token {
+        return self.tokens[self.current - 1].clone();
+    }
+    fn match_kind(&mut self, kind: TokenKind) -> bool {
+        if self.check(kind) {
+            self.advance();
+            return true;
+        }
+        return false;
+    }
+    fn check(&self, kind: TokenKind) -> bool {
+        if self.at_end() {
+            return false;
+        }
+        let next = self.peek();
+        return kind == next.kind;
+    }
+    fn peek(&self) -> Token {
+        return self.tokens[self.current].clone();
+    }
+    fn consume(&mut self, kind: TokenKind, message: &str) -> Result<Token, String> {
+        if self.check(kind) {
+            return Ok(self.advance());
+        }
+        return Err(message.to_string());
+    }
+
+    /////////
+    /////////
+    /////////
+
+    // TODO: synchronize
+    fn item(&mut self) -> Result<Item, String> {
+        if self.check(TokenKind::SquareBracketLeft) {
+            self.consume(
+                TokenKind::SquareBracketLeft,
+                "checking a left bracket must consume a left bracket",
+            )?;
+            let full_name = self.full_name()?;
+            self.consume(
+                TokenKind::Comma,
+                "bracketed name must be followed by a comma",
+            )?;
+            if self.check(TokenKind::Space) {
+                self.consume(TokenKind::Space, "checking a space must consume a space")?;
+            }
+            match self.full_name() {
+                Err(e) => {
+                    return Err(format!(
+                        "bracketed name must have a second name after comma, error {}",
+                        e,
+                    ))
+                }
+                _ => (),
+            };
+            self.consume(
+                TokenKind::SquareBracketRight,
+                "bracketed names must be terminated by a right bracket",
+            )?;
+
+            return Ok(Item {
+                name: full_name,
+                quantity: 1,
+            });
+        }
+        if self.check(TokenKind::Number) {
+            let qty = self.quantity()?;
+            self.consume(
+                TokenKind::Space,
+                "starting with a quantity means a space must follow to separate from name",
+            )?;
+            let full_name = self.full_name()?;
+
+            return Ok(Item {
+                name: full_name,
+                quantity: qty,
+            });
+        }
+        if self.check(TokenKind::String) {
+            let full_name = self.full_name()?;
+            if self.check(TokenKind::Space) {
+                self.consume(TokenKind::Space, "checking space must consume space")?;
+            } else if self.check(TokenKind::Tab) {
+                self.consume(TokenKind::Tab, "checking a tab must consume tab")?;
+            }
+            if self.check(TokenKind::EOF) {
+                return Ok(Item {
+                    name: full_name,
+                    quantity: 1,
+                });
+            }
+
+            let qty = self.quantity()?;
+            return Ok(Item {
+                name: full_name,
+                quantity: qty,
+            });
+        }
+
+        return Err(format!("invalid starting token: {:?}", self.peek()));
+    }
+    fn full_name(&mut self) -> Result<String, String> {
+        let mut full_string: String = "".to_owned();
+        loop {
+            if self.check(TokenKind::String) {
+                let tok =
+                    self.consume(TokenKind::String, "checking a string must consume a string")?;
+                full_string.push_str(&tok.s);
+            } else if self.check(TokenKind::Space) {
+                self.consume(TokenKind::Space, "checking a space must consume a space")?;
+                full_string.push_str(" ");
+            } else {
+                break;
+            }
+        }
+        let cleaned_string: String = match full_string.strip_suffix("*") {
+            Some(s) => s.to_string(),
+            None => full_string,
+        };
+        if cleaned_string.is_empty() {
+            return Err("empty string after cleaning asterisks".to_string());
+        }
+        return Ok(cleaned_string);
+    }
+    fn quantity(&mut self) -> Result<i64, String> {
+        if self.check(TokenKind::X) {
+            self.consume(TokenKind::X, "checking x must consume x")?;
+            if self.check(TokenKind::Space) {
+                self.consume(TokenKind::Space, "checking space must consume space")?;
+            }
+            let tok = self.consume(
+                TokenKind::Number,
+                "quantities must have a number after x (optional space in between)",
+            )?;
+            let q: i64 = match tok.s.parse() {
+                Ok(u) => u,
+                Err(e) => return Err(format!("parsing {} to i64: {}", tok.s, e)),
+            };
+            return Ok(q);
+        } else {
+            let tok = self.consume(TokenKind::Number, "quantities must be a number")?;
+            if self.check(TokenKind::Space) {
+                self.consume(TokenKind::Space, "checking space must consume space")?;
+                self.consume(TokenKind::X, "starting a quantity with a number followed by a space requires an 'x' to follow the space")?;
+            } else if self.check(TokenKind::X) {
+                self.consume(TokenKind::X, "checking x must consume x")?;
+            }
+            let q: i64 = match tok.s.parse() {
+                Ok(u) => u,
+                Err(e) => return Err(format!("parsing {} to i64: {}", tok.s, e)),
+            };
+            return Ok(q);
+        }
+    }
+}
+
+pub fn parse(s: &str) -> Result<Vec<Item>, String> {
+    let items: Result<Vec<Item>, String> = s
+        .lines()
+        .enumerate()
+        .map(|(i, line)| {
+            let tokens = match lex(line.trim()) {
+                Ok(tokens) => tokens,
+                Err(errs) => {
+                    let s = errs.iter().fold(String::new(), |acc, e| acc + e);
+                    return Err(format!("line {}: {s}", i));
+                }
+            };
+            let mut p = Parser {
+                tokens: tokens,
+                current: 0,
+            };
+            let item = p.item()?;
+            return Ok(item);
+        })
+        .collect();
+
+    return items;
 }
