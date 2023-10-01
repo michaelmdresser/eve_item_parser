@@ -13,7 +13,15 @@ mod tests {
         assert_eq!(
             parse("Paladin").unwrap(),
             vec![Item {
-                name: String::from("Paladin"),
+                type_name: String::from("Paladin"),
+                quantity: 1
+            }]
+        );
+        assert_eq!(
+            parse_with_id("Paladin").unwrap(),
+            vec![ItemWithId {
+                type_name: String::from("Paladin"),
+                type_id: 28659,
                 quantity: 1
             }]
         );
@@ -32,7 +40,7 @@ mod tests {
         assert_eq!(
             parse("Paladin 2").unwrap(),
             vec![Item {
-                name: String::from("Paladin"),
+                type_name: String::from("Paladin"),
                 quantity: 2
             }]
         );
@@ -51,7 +59,7 @@ mod tests {
         assert_eq!(
             parse("Paladin* 2").unwrap(),
             vec![Item {
-                name: String::from("Paladin"),
+                type_name: String::from("Paladin"),
                 quantity: 2
             }]
         );
@@ -71,7 +79,7 @@ mod tests {
         assert_eq!(
             parse("Paladin x2").unwrap(),
             vec![Item {
-                name: String::from("Paladin"),
+                type_name: String::from("Paladin"),
                 quantity: 2
             }]
         );
@@ -90,7 +98,7 @@ mod tests {
         assert_eq!(
             parse("Paladin	2").unwrap(),
             vec![Item {
-                name: String::from("Paladin"),
+                type_name: String::from("Paladin"),
                 quantity: 2
             }]
         );
@@ -109,7 +117,7 @@ mod tests {
         assert_eq!(
             parse("Paladin*	2").unwrap(),
             vec![Item {
-                name: String::from("Paladin"),
+                type_name: String::from("Paladin"),
                 quantity: 2
             }]
         );
@@ -128,7 +136,7 @@ mod tests {
         assert_eq!(
             parse("2 Paladin").unwrap(),
             vec![Item {
-                name: String::from("Paladin"),
+                type_name: String::from("Paladin"),
                 quantity: 2
             }]
         );
@@ -149,7 +157,7 @@ mod tests {
         assert_eq!(
             parse("2 x Paladin").unwrap(),
             vec![Item {
-                name: String::from("Paladin"),
+                type_name: String::from("Paladin"),
                 quantity: 2
             }]
         );
@@ -169,7 +177,7 @@ mod tests {
         assert_eq!(
             parse("2x Paladin").unwrap(),
             vec![Item {
-                name: String::from("Paladin"),
+                type_name: String::from("Paladin"),
                 quantity: 2
             }]
         );
@@ -193,7 +201,7 @@ mod tests {
         assert_eq!(
             parse("[Paladin, Joe's Paladin]").unwrap(),
             vec![Item {
-                name: String::from("Paladin"),
+                type_name: String::from("Paladin"),
                 quantity: 1
             }]
         );
@@ -224,7 +232,7 @@ mod tests {
         assert_eq!(
             parse("Burned Logic Circuit	Salvaged Materials	Cargo Hold	26").unwrap(),
             vec![Item {
-                name: String::from("Burned Logic Circuit"),
+                type_name: String::from("Burned Logic Circuit"),
                 quantity: 26,
             }]
         );
@@ -259,7 +267,7 @@ mod tests {
         assert_eq!(
             parse("Capital Transverse Bulkhead I	2	Rig Armor	Module	Rig Slot").unwrap(),
             vec![Item {
-                name: String::from("Capital Transverse Bulkhead I"),
+                type_name: String::from("Capital Transverse Bulkhead I"),
                 quantity: 2,
             }]
         );
@@ -291,7 +299,7 @@ mod tests {
         assert_eq!(
             parse("Cybernetic Subprocessor - Basic	2	Cyber Learning	Implant	").unwrap(),
             vec![Item {
-                name: String::from("Cybernetic Subprocessor - Basic"),
+                type_name: String::from("Cybernetic Subprocessor - Basic"),
                 quantity: 2,
             }]
         );
@@ -529,12 +537,28 @@ fn lex(s: &str) -> Result<Vec<Token>, Vec<LexErr>> {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Item {
-    pub name: String,
+    pub type_name: String,
     pub quantity: i64,
 }
 impl std::fmt::Display for Item {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "({}, {})", self.name, self.quantity)
+        write!(f, "({}, {})", self.type_name, self.quantity)
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct ItemWithId {
+    pub type_name: String,
+    pub type_id: u64,
+    pub quantity: i64,
+}
+impl std::fmt::Display for ItemWithId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "({}, {}, {})",
+            self.type_id, self.type_name, self.quantity
+        )
     }
 }
 
@@ -626,7 +650,7 @@ impl Parser {
             )?;
 
             return Ok(Item {
-                name: full_name,
+                type_name: full_name,
                 quantity: 1,
             });
         }
@@ -655,7 +679,7 @@ impl Parser {
             };
 
             return Ok(Item {
-                name: full_name,
+                type_name: full_name,
                 quantity: qty,
             });
         }
@@ -671,7 +695,7 @@ impl Parser {
             };
             if self.at_end() {
                 return Ok(Item {
-                    name: full_name,
+                    type_name: full_name,
                     quantity: 1,
                 });
             }
@@ -685,7 +709,7 @@ impl Parser {
                         Err(e) => return Err(format!("full name followed by tab then number must match a quantity for the number, err: {}", e)),
                     };
                     return Ok(Item {
-                        name: full_name,
+                        type_name: full_name,
                         quantity: qty,
                     });
                 }
@@ -705,7 +729,7 @@ impl Parser {
                 }
             };
             return Ok(Item {
-                name: full_name,
+                type_name: full_name,
                 quantity: qty,
             });
         }
@@ -790,4 +814,23 @@ pub fn parse(s: &str) -> Result<Vec<Item>, String> {
         .collect();
 
     return items;
+}
+
+include!(concat!(env!("OUT_DIR"), "/codegen.rs"));
+
+pub fn parse_with_id(s: &str) -> Result<Vec<ItemWithId>, String> {
+    let items = parse(s)?;
+    items
+        .iter()
+        .map(|item| {
+            let id = ITEM_TO_CODE
+                .get(&item.type_name)
+                .ok_or(format!("failed to look up {}", item.type_name))?;
+            return Ok(ItemWithId {
+                type_name: item.type_name.clone(),
+                quantity: item.quantity,
+                type_id: *id,
+            });
+        })
+        .collect()
 }
