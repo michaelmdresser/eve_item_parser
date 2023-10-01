@@ -5,14 +5,21 @@ mod tests {
     use super::*;
 
     #[test]
-    fn lex_name_only() {
+    fn name_only() {
         assert_eq!(
             lex("Paladin").unwrap(),
             vec![string(String::from("Paladin")), eof(),]
         );
+        assert_eq!(
+            parse("Paladin").unwrap(),
+            vec![Item {
+                name: String::from("Paladin"),
+                quantity: 1
+            }]
+        );
     }
     #[test]
-    fn lex_name_space_quantity() {
+    fn name_space_quantity() {
         assert_eq!(
             lex("Paladin 2").unwrap(),
             vec![
@@ -22,9 +29,16 @@ mod tests {
                 eof(),
             ]
         );
+        assert_eq!(
+            parse("Paladin 2").unwrap(),
+            vec![Item {
+                name: String::from("Paladin"),
+                quantity: 2
+            }]
+        );
     }
     #[test]
-    fn lex_name_star_space_quantity() {
+    fn name_star_space_quantity() {
         assert_eq!(
             lex("Paladin* 2").unwrap(),
             vec![
@@ -34,9 +48,16 @@ mod tests {
                 eof(),
             ]
         );
+        assert_eq!(
+            parse("Paladin* 2").unwrap(),
+            vec![Item {
+                name: String::from("Paladin"),
+                quantity: 2
+            }]
+        );
     }
     #[test]
-    fn lex_name_space_x_quantity() {
+    fn name_space_x_quantity() {
         assert_eq!(
             lex("Paladin x2").unwrap(),
             vec![
@@ -47,9 +68,16 @@ mod tests {
                 eof(),
             ]
         );
+        assert_eq!(
+            parse("Paladin x2").unwrap(),
+            vec![Item {
+                name: String::from("Paladin"),
+                quantity: 2
+            }]
+        );
     }
     #[test]
-    fn lex_name_tab_quantity() {
+    fn name_tab_quantity() {
         assert_eq!(
             lex("Paladin	2").unwrap(),
             vec![
@@ -59,9 +87,16 @@ mod tests {
                 eof(),
             ]
         );
+        assert_eq!(
+            parse("Paladin	2").unwrap(),
+            vec![Item {
+                name: String::from("Paladin"),
+                quantity: 2
+            }]
+        );
     }
     #[test]
-    fn lex_name_star_tab_quantity() {
+    fn name_star_tab_quantity() {
         assert_eq!(
             lex("Paladin*	2").unwrap(),
             vec![
@@ -71,9 +106,16 @@ mod tests {
                 eof(),
             ]
         );
+        assert_eq!(
+            parse("Paladin*	2").unwrap(),
+            vec![Item {
+                name: String::from("Paladin"),
+                quantity: 2
+            }]
+        );
     }
     #[test]
-    fn lex_quantity_space_name() {
+    fn quantity_space_name() {
         assert_eq!(
             lex("2 Paladin").unwrap(),
             vec![
@@ -83,9 +125,16 @@ mod tests {
                 eof(),
             ]
         );
+        assert_eq!(
+            parse("2 Paladin").unwrap(),
+            vec![Item {
+                name: String::from("Paladin"),
+                quantity: 2
+            }]
+        );
     }
     #[test]
-    fn lex_quantity_space_x_space_name() {
+    fn quantity_space_x_space_name() {
         assert_eq!(
             lex("2 x Paladin").unwrap(),
             vec![
@@ -97,9 +146,16 @@ mod tests {
                 eof(),
             ]
         );
+        assert_eq!(
+            parse("2 x Paladin").unwrap(),
+            vec![Item {
+                name: String::from("Paladin"),
+                quantity: 2
+            }]
+        );
     }
     #[test]
-    fn lex_quantity_x_space_name() {
+    fn quantity_x_space_name() {
         assert_eq!(
             lex("2x Paladin").unwrap(),
             vec![
@@ -110,9 +166,16 @@ mod tests {
                 eof(),
             ]
         );
+        assert_eq!(
+            parse("2x Paladin").unwrap(),
+            vec![Item {
+                name: String::from("Paladin"),
+                quantity: 2
+            }]
+        );
     }
     #[test]
-    fn lex_ship_fit_name() {
+    fn ship_fit_name() {
         assert_eq!(
             lex("[Paladin, Joe's Paladin]").unwrap(),
             vec![
@@ -127,9 +190,16 @@ mod tests {
                 eof(),
             ]
         );
+        assert_eq!(
+            parse("[Paladin, Joe's Paladin]").unwrap(),
+            vec![Item {
+                name: String::from("Paladin"),
+                quantity: 2
+            }]
+        );
     }
     #[test]
-    fn lex_view_contents() {
+    fn view_contents() {
         assert_eq!(
             lex("Burned Logic Circuit	Salvaged Materials	Cargo Hold	26").unwrap(),
             vec![
@@ -151,9 +221,16 @@ mod tests {
                 eof(),
             ]
         );
+        assert_eq!(
+            parse("Burned Logic Circuit	Salvaged Materials	Cargo Hold	26").unwrap(),
+            vec![Item {
+                name: String::from("Burned Logic Circuit"),
+                quantity: 26,
+            }]
+        );
     }
     #[test]
-    fn lex_contract() {
+    fn contract() {
         assert_eq!(
             lex("Capital Transverse Bulkhead I	1	Rig Armor	Module	Rig Slot").unwrap(),
             vec![
@@ -179,9 +256,16 @@ mod tests {
                 eof(),
             ]
         );
+        assert_eq!(
+            parse("Capital Transverse Bulkhead I	2	Rig Armor	Module	Rig Slot").unwrap(),
+            vec![Item {
+                name: String::from("Capital Transverse Bulkhead I"),
+                quantity: 2,
+            }]
+        );
     }
     #[test]
-    fn lex_contract_no_details() {
+    fn contract_no_details() {
         assert_eq!(
             lex("Cybernetic Subprocessor - Basic	1	Cyber Learning	Implant	").unwrap(),
             vec![
@@ -203,6 +287,13 @@ mod tests {
                 tab(),
                 eof(),
             ]
+        );
+        assert_eq!(
+            parse("Cybernetic Subprocessor - Basic	2	Cyber Learning	Implant	").unwrap(),
+            vec![Item {
+                name: String::from("Cybernetic Subprocessor - Basic"),
+                quantity: 2,
+            }]
         );
     }
 }
