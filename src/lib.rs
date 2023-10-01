@@ -674,7 +674,7 @@ impl Parser {
             } else if self.check(TokenKind::Tab) {
                 self.consume(TokenKind::Tab, "checking a tab must consume tab")?;
             }
-            if self.check(TokenKind::EOF) {
+            if self.at_end() {
                 return Ok(Item {
                     name: full_name,
                     quantity: 1,
