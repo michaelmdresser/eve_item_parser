@@ -640,10 +640,10 @@ impl Parser {
                     ))
                 }
             };
-            self.consume(
-                TokenKind::Space,
-                "starting with a quantity means a space must follow to separate from name",
-            )?;
+            // This is because quantity may or may not consume the intermediate space
+            if self.check(TokenKind::Space) {
+                self.consume(TokenKind::Space, "checking space must consume space")?;
+            }
             let full_name = match self.full_name() {
                 Ok(s) => s,
                 Err(e) => {
@@ -740,8 +740,8 @@ impl Parser {
             let tok = self.consume(TokenKind::Number, "quantities must be a number")?;
             if self.check(TokenKind::Space) {
                 self.consume(TokenKind::Space, "checking space must consume space")?;
-                self.consume(TokenKind::X, "starting a quantity with a number followed by a space requires an 'x' to follow the space")?;
-            } else if self.check(TokenKind::X) {
+            }
+            if self.check(TokenKind::X) {
                 self.consume(TokenKind::X, "checking x must consume x")?;
             }
             let q: i64 = match tok.s.parse() {
