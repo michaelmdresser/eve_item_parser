@@ -669,16 +669,31 @@ impl Parser {
                     ))
                 }
             };
-            if self.check(TokenKind::Space) {
-                self.consume(TokenKind::Space, "checking space must consume space")?;
-            } else if self.check(TokenKind::Tab) {
-                self.consume(TokenKind::Tab, "checking a tab must consume tab")?;
-            }
             if self.at_end() {
                 return Ok(Item {
                     name: full_name,
                     quantity: 1,
                 });
+            }
+            if self.check(TokenKind::Space) {
+                self.consume(TokenKind::Space, "checking space must consume space")?;
+            } else if self.check(TokenKind::Tab) {
+                self.consume(TokenKind::Tab, "checking tab must consume tab")?;
+                if self.check(TokenKind::Number) {
+                    let qty = match self.quantity() {
+                        Ok(q) => q,
+                        Err(e) => return Err(format!("full name followed by tab then number must match a quantity for the number, err: {}", e)),
+                    };
+                    return Ok(Item {
+                        name: full_name,
+                        quantity: qty,
+                    });
+                }
+
+                self.full_name()?;
+                self.consume(TokenKind::Tab, "contents view is expected to be name-tab-name-tab-tab-quantity, second tab is missing")?;
+                self.full_name()?;
+                self.consume(TokenKind::Tab, "contents view is expected to be name-tab-name-tab-tab-quantity, third tab is missing")?;
             }
             let qty = match self.quantity() {
                 Ok(q) => q,
