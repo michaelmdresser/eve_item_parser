@@ -7,6 +7,36 @@ mod tests {
     use super::*;
 
     #[test]
+    fn intermediate_empty() {
+        assert_eq!(
+            parse(
+                "Paladin
+
+Harpy 1
+
+
+Golem x3
+"
+            )
+            .unwrap(),
+            vec!(
+                Item {
+                    type_name: String::from("Paladin"),
+                    quantity: 1,
+                },
+                Item {
+                    type_name: String::from("Harpy"),
+                    quantity: 1,
+                },
+                Item {
+                    type_name: String::from("Golem"),
+                    quantity: 3,
+                },
+            )
+        );
+    }
+
+    #[test]
     fn name_only() {
         assert_eq!(
             lex("Paladin").unwrap(),
@@ -797,6 +827,8 @@ impl Parser {
 pub fn parse(s: &str) -> Result<Vec<Item>, String> {
     let items: Result<Vec<Item>, String> = s
         .lines()
+        .map(|line| line.trim())
+        .filter(|line| line.len() > 0)
         .enumerate()
         .map(|(i, line)| {
             let tokens = match lex(line.trim()) {
