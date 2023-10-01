@@ -715,10 +715,11 @@ impl Parser {
             Some(s) => s.to_string(),
             None => full_string,
         };
-        if cleaned_string.is_empty() {
-            return Err("empty string after cleaning asterisks".to_string());
+        let trimmed = cleaned_string.trim();
+        if trimmed.is_empty() {
+            return Err("empty string after cleaning asterisks and trimming".to_string());
         }
-        return Ok(cleaned_string);
+        return Ok(trimmed.to_string());
     }
     fn quantity(&mut self) -> Result<i64, String> {
         if self.check(TokenKind::X) {
