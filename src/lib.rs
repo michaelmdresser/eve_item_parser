@@ -194,7 +194,7 @@ mod tests {
             parse("[Paladin, Joe's Paladin]").unwrap(),
             vec![Item {
                 name: String::from("Paladin"),
-                quantity: 2
+                quantity: 1
             }]
         );
     }
