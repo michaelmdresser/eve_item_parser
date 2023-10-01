@@ -1,0 +1,8 @@
+[package]
+name = "eve-item-parser-cli"
+authors = ["Michael Dresser <michaelmdresser@gmail.com>"]
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+eve-item-parser = { path = ".." }
