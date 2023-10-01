@@ -529,8 +529,8 @@ fn lex(s: &str) -> Result<Vec<Token>, Vec<LexErr>> {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Item {
-    name: String,
-    quantity: i64,
+    pub name: String,
+    pub quantity: i64,
 }
 impl std::fmt::Display for Item {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
