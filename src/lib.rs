@@ -595,7 +595,15 @@ impl Parser {
                 TokenKind::SquareBracketLeft,
                 "checking a left bracket must consume a left bracket",
             )?;
-            let full_name = self.full_name()?;
+            let full_name = match self.full_name() {
+                Ok(s) => s,
+                Err(e) => {
+                    return Err(format!(
+                        "left bracket must be followed by a name, err: {}",
+                        e
+                    ))
+                }
+            };
             self.consume(
                 TokenKind::Comma,
                 "bracketed name must be followed by a comma",
@@ -606,7 +614,7 @@ impl Parser {
             match self.full_name() {
                 Err(e) => {
                     return Err(format!(
-                        "bracketed name must have a second name after comma, error {}",
+                        "bracketed name must have a second name after comma, err: {}",
                         e,
                     ))
                 }
@@ -623,12 +631,28 @@ impl Parser {
             });
         }
         if self.check(TokenKind::Number) {
-            let qty = self.quantity()?;
+            let qty = match self.quantity() {
+                Ok(q) => q,
+                Err(e) => {
+                    return Err(format!(
+                        "starting with a number token demands a quantity match, err: {}",
+                        e
+                    ))
+                }
+            };
             self.consume(
                 TokenKind::Space,
                 "starting with a quantity means a space must follow to separate from name",
             )?;
-            let full_name = self.full_name()?;
+            let full_name = match self.full_name() {
+                Ok(s) => s,
+                Err(e) => {
+                    return Err(format!(
+                        "number followed by a space must be followed by a name, err: {}",
+                        e
+                    ))
+                }
+            };
 
             return Ok(Item {
                 name: full_name,
@@ -636,7 +660,15 @@ impl Parser {
             });
         }
         if self.check(TokenKind::String) {
-            let full_name = self.full_name()?;
+            let full_name = match self.full_name() {
+                Ok(s) => s,
+                Err(e) => {
+                    return Err(format!(
+                        "starting with a string demands a fulll name match, err: {}",
+                        e
+                    ))
+                }
+            };
             if self.check(TokenKind::Space) {
                 self.consume(TokenKind::Space, "checking space must consume space")?;
             } else if self.check(TokenKind::Tab) {
@@ -648,8 +680,15 @@ impl Parser {
                     quantity: 1,
                 });
             }
-
-            let qty = self.quantity()?;
+            let qty = match self.quantity() {
+                Ok(q) => q,
+                Err(e) => {
+                    return Err(format!(
+                        "starting with a full name not followed by EOF demands a quantity, err: {}",
+                        e
+                    ))
+                }
+            };
             return Ok(Item {
                 name: full_name,
                 quantity: qty,
