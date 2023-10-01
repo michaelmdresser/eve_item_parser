@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 #[cfg(test)]
 mod tests {
     // Thanks to https://github.com/harrelchris/eveparse/blob/main/tests/test_parse.py for many of these test cases.
@@ -535,7 +537,7 @@ fn lex(s: &str) -> Result<Vec<Token>, Vec<LexErr>> {
 ////////
 ////////
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Item {
     pub type_name: String,
     pub quantity: i64,
@@ -546,7 +548,7 @@ impl std::fmt::Display for Item {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ItemWithId {
     pub type_name: String,
     pub type_id: u64,
