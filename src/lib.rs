@@ -12,7 +12,7 @@ mod tests {
             parse(
                 "Paladin
 
-Harpy 1
+Harpy x1
 
 
 Golem x3
@@ -43,6 +43,17 @@ Golem x3
             vec!(Item {
                 type_name: String::from("5MN Y-T8 Compact Microwarpdrive"),
                 quantity: 1,
+            },)
+        );
+    }
+
+    #[test]
+    fn cap_booster() {
+        assert_eq!(
+            parse("Navy Cap Booster 3200 x9").unwrap(),
+            vec!(Item {
+                type_name: String::from("Navy Cap Booster 3200"),
+                quantity: 9,
             },)
         );
     }
@@ -93,44 +104,48 @@ Golem x3
             }]
         );
     }
-    #[test]
-    fn name_space_quantity() {
-        assert_eq!(
-            lex("Paladin 2").unwrap(),
-            vec![
-                string(String::from("Paladin")),
-                space(),
-                number(String::from("2")),
-                eof(),
-            ]
-        );
-        assert_eq!(
-            parse("Paladin 2").unwrap(),
-            vec![Item {
-                type_name: String::from("Paladin"),
-                quantity: 2
-            }]
-        );
-    }
-    #[test]
-    fn name_star_space_quantity() {
-        assert_eq!(
-            lex("Paladin* 2").unwrap(),
-            vec![
-                string(String::from("Paladin*")),
-                space(),
-                number(String::from("2")),
-                eof(),
-            ]
-        );
-        assert_eq!(
-            parse("Paladin* 2").unwrap(),
-            vec![Item {
-                type_name: String::from("Paladin"),
-                quantity: 2
-            }]
-        );
-    }
+
+    // In order for logic matching "Navy Cap Booster 3200 x9" to be sane,
+    // I'm sincerely hoping these cases are invalid in EVE.
+    // #[test]
+    // fn name_space_quantity() {
+    //     assert_eq!(
+    //         lex("Paladin 2").unwrap(),
+    //         vec![
+    //             string(String::from("Paladin")),
+    //             space(),
+    //             number(String::from("2")),
+    //             eof(),
+    //         ]
+    //     );
+    //     assert_eq!(
+    //         parse("Paladin 2").unwrap(),
+    //         vec![Item {
+    //             type_name: String::from("Paladin"),
+    //             quantity: 2
+    //         }]
+    //     );
+    // }
+    // #[test]
+    // fn name_star_space_quantity() {
+    //     assert_eq!(
+    //         lex("Paladin* 2").unwrap(),
+    //         vec![
+    //             string(String::from("Paladin*")),
+    //             space(),
+    //             number(String::from("2")),
+    //             eof(),
+    //         ]
+    //     );
+    //     assert_eq!(
+    //         parse("Paladin* 2").unwrap(),
+    //         vec![Item {
+    //             type_name: String::from("Paladin"),
+    //             quantity: 2
+    //         }]
+    //     );
+    // }
+
     #[test]
     fn name_space_x_quantity() {
         assert_eq!(
@@ -791,35 +806,25 @@ impl Parser {
         let mut full_string: String = "".to_owned();
         loop {
             if self.check(TokenKind::Number) {
-                if self.current == 0 {
-                    let tok =
-                        self.consume(TokenKind::Number, "checking number must consume number")?;
-                    full_string.push_str(&format!("{}", tok.s));
-                } else {
-                    let prev = self.previous();
-                    match prev.kind {
-                        TokenKind::String | TokenKind::Number => {
-                            let tok = self.consume(
-                                TokenKind::Number,
-                                "checking number must consume number",
-                            )?;
-                            full_string.push_str(&format!("{}", tok.s));
-                        }
-                        // Numbers preceded by a space are assumed to be quantities.
-                        // I'm not certain if this holds up -- if there is a module
-                        // which has a word after the first which starts with a
-                        // number then we're in trouble and have to do more
-                        // lookahead than I want to to.
-                        TokenKind::Space => break,
-                        _ => break,
-                    };
-                }
+                let tok = self.consume(TokenKind::Number, "checking number must consume number")?;
+                full_string.push_str(&format!("{}", tok.s));
             } else if self.check(TokenKind::String) {
                 let tok =
                     self.consume(TokenKind::String, "checking a string must consume a string")?;
                 full_string.push_str(&tok.s);
             } else if self.check(TokenKind::Space) {
                 self.consume(TokenKind::Space, "checking a space must consume a space")?;
+                if self.at_end() {
+                    break;
+                }
+
+                // TODO: I really don't like this. The idea is that a " x" implies
+                // this is about to be a quantity, so we're done parsing the name.
+                let after_space = self.peek();
+                if after_space.kind == TokenKind::String && after_space.s == "x" {
+                    break;
+                }
+
                 full_string.push_str(" ");
             } else {
                 break;
