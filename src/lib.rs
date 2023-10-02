@@ -48,6 +48,17 @@ Golem x3
     }
 
     #[test]
+    fn bracketed_name_with_subbrackets() {
+        assert_eq!(
+            parse("[Paladin, [ABC] Pala]").unwrap(),
+            vec!(Item {
+                type_name: String::from("Paladin"),
+                quantity: 1,
+            },)
+        );
+    }
+
+    #[test]
     fn name_only() {
         assert_eq!(
             lex("Paladin").unwrap(),
@@ -681,19 +692,23 @@ impl Parser {
             if self.check(TokenKind::Space) {
                 self.consume(TokenKind::Space, "checking a space must consume a space")?;
             }
-            match self.full_name() {
-                Err(e) => {
-                    return Err(format!(
-                        "bracketed name must have a second name after comma, err: {}",
-                        e,
-                    ))
-                }
-                _ => (),
-            };
-            self.consume(
-                TokenKind::SquareBracketRight,
-                "bracketed names must be terminated by a right bracket",
-            )?;
+
+            // The actual individual item (ship, usually) name can include sub-brackets,
+            // which I don't want to bother supporting parsing of at the moment. Once we've
+            // parsed the comma we know we have the item and no more information is required.
+            // match self.full_name() {
+            //     Err(e) => {
+            //         return Err(format!(
+            //             "bracketed name must have a second name after comma, err: {}",
+            //             e,
+            //         ))
+            //     }
+            //     _ => (),
+            // };
+            // self.consume(
+            //     TokenKind::SquareBracketRight,
+            //     "bracketed names must be terminated by a right bracket",
+            // )?;
 
             return Ok(Item {
                 type_name: full_name,
