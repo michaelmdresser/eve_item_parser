@@ -59,6 +59,21 @@ Golem x3
     }
 
     #[test]
+    fn simulated_ship_name() {
+        assert_eq!(
+            parse(
+                "[Paladin, Simulated Paladin Fitting]
+"
+            )
+            .unwrap(),
+            vec!(Item {
+                type_name: String::from("Paladin"),
+                quantity: 1,
+            },)
+        );
+    }
+
+    #[test]
     fn name_only() {
         assert_eq!(
             lex("Paladin").unwrap(),
