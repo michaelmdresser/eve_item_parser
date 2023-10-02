@@ -37,6 +37,17 @@ Golem x3
     }
 
     #[test]
+    fn mixed_character_module() {
+        assert_eq!(
+            parse("5MN Y-T8 Compact Microwarpdrive").unwrap(),
+            vec!(Item {
+                type_name: String::from("5MN Y-T8 Compact Microwarpdrive"),
+                quantity: 1,
+            },)
+        );
+    }
+
+    #[test]
     fn name_only() {
         assert_eq!(
             lex("Paladin").unwrap(),
@@ -154,66 +165,69 @@ Golem x3
             }]
         );
     }
-    #[test]
-    fn quantity_space_name() {
-        assert_eq!(
-            lex("2 Paladin").unwrap(),
-            vec![
-                number(String::from("2")),
-                space(),
-                string(String::from("Paladin")),
-                eof(),
-            ]
-        );
-        assert_eq!(
-            parse("2 Paladin").unwrap(),
-            vec![Item {
-                type_name: String::from("Paladin"),
-                quantity: 2
-            }]
-        );
-    }
-    #[test]
-    fn quantity_space_x_space_name() {
-        assert_eq!(
-            lex("2 x Paladin").unwrap(),
-            vec![
-                number(String::from("2")),
-                space(),
-                x(),
-                space(),
-                string(String::from("Paladin")),
-                eof(),
-            ]
-        );
-        assert_eq!(
-            parse("2 x Paladin").unwrap(),
-            vec![Item {
-                type_name: String::from("Paladin"),
-                quantity: 2
-            }]
-        );
-    }
-    #[test]
-    fn quantity_x_space_name() {
-        assert_eq!(
-            lex("2x Paladin").unwrap(),
-            vec![
-                number(String::from("2")),
-                x(),
-                space(),
-                string(String::from("Paladin")),
-                eof(),
-            ]
-        );
-        assert_eq!(
-            parse("2x Paladin").unwrap(),
-            vec![Item {
-                type_name: String::from("Paladin"),
-                quantity: 2
-            }]
-        );
-    }
+
+    // I currently don't believe that these number-before-name cases are valid
+    // tests. Will reintroduce if that changes.
+    // #[test]
+    // fn quantity_space_name() {
+    //     assert_eq!(
+    //         lex("2 Paladin").unwrap(),
+    //         vec![
+    //             number(String::from("2")),
+    //             space(),
+    //             string(String::from("Paladin")),
+    //             eof(),
+    //         ]
+    //     );
+    //     assert_eq!(
+    //         parse("2 Paladin").unwrap(),
+    //         vec![Item {
+    //             type_name: String::from("Paladin"),
+    //             quantity: 2
+    //         }]
+    //     );
+    // }
+    // #[test]
+    // fn quantity_space_x_space_name() {
+    //     assert_eq!(
+    //         lex("2 x Paladin").unwrap(),
+    //         vec![
+    //             number(String::from("2")),
+    //             space(),
+    //             x(),
+    //             space(),
+    //             string(String::from("Paladin")),
+    //             eof(),
+    //         ]
+    //     );
+    //     assert_eq!(
+    //         parse("2 x Paladin").unwrap(),
+    //         vec![Item {
+    //             type_name: String::from("Paladin"),
+    //             quantity: 2
+    //         }]
+    //     );
+    // }
+    // #[test]
+    // fn quantity_x_space_name() {
+    //     assert_eq!(
+    //         lex("2x Paladin").unwrap(),
+    //         vec![
+    //             number(String::from("2")),
+    //             x(),
+    //             space(),
+    //             string(String::from("Paladin")),
+    //             eof(),
+    //         ]
+    //     );
+    //     assert_eq!(
+    //         parse("2x Paladin").unwrap(),
+    //         vec![Item {
+    //             type_name: String::from("Paladin"),
+    //             quantity: 2
+    //         }]
+    //     );
+    // }
     #[test]
     fn ship_fit_name() {
         assert_eq!(
@@ -686,41 +700,12 @@ impl Parser {
                 quantity: 1,
             });
         }
-        if self.check(TokenKind::Number) {
-            let qty = match self.quantity() {
-                Ok(q) => q,
-                Err(e) => {
-                    return Err(format!(
-                        "starting with a number token demands a quantity match, err: {}",
-                        e
-                    ))
-                }
-            };
-            // This is because quantity may or may not consume the intermediate space
-            if self.check(TokenKind::Space) {
-                self.consume(TokenKind::Space, "checking space must consume space")?;
-            }
+        if self.check(TokenKind::String) || self.check(TokenKind::Number) {
             let full_name = match self.full_name() {
                 Ok(s) => s,
                 Err(e) => {
                     return Err(format!(
-                        "number followed by a space must be followed by a name, err: {}",
-                        e
-                    ))
-                }
-            };
-
-            return Ok(Item {
-                type_name: full_name,
-                quantity: qty,
-            });
-        }
-        if self.check(TokenKind::String) {
-            let full_name = match self.full_name() {
-                Ok(s) => s,
-                Err(e) => {
-                    return Err(format!(
-                        "starting with a string demands a fulll name match, err: {}",
+                        "starting with a string or number demands a full name match, err: {}",
                         e
                     ))
                 }
@@ -771,7 +756,31 @@ impl Parser {
     fn full_name(&mut self) -> Result<String, String> {
         let mut full_string: String = "".to_owned();
         loop {
-            if self.check(TokenKind::String) {
+            if self.check(TokenKind::Number) {
+                if self.current == 0 {
+                    let tok =
+                        self.consume(TokenKind::Number, "checking number must consume number")?;
+                    full_string.push_str(&format!("{}", tok.s));
+                } else {
+                    let prev = self.previous();
+                    match prev.kind {
+                        TokenKind::String | TokenKind::Number => {
+                            let tok = self.consume(
+                                TokenKind::Number,
+                                "checking number must consume number",
+                            )?;
+                            full_string.push_str(&format!("{}", tok.s));
+                        }
+                        // Numbers preceded by a space are assumed to be quantities.
+                        // I'm not certain if this holds up -- if there is a module
+                        // which has a word after the first which starts with a
+                        // number then we're in trouble and have to do more
+                        // lookahead than I want to to.
+                        TokenKind::Space => break,
+                        _ => break,
+                    };
+                }
+            } else if self.check(TokenKind::String) {
                 let tok =
                     self.consume(TokenKind::String, "checking a string must consume a string")?;
                 full_string.push_str(&tok.s);
