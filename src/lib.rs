@@ -59,18 +59,16 @@ Golem x3
     }
 
     #[test]
-    fn simulated_ship_name() {
-        assert_eq!(
-            parse(
-                "[Paladin, Simulated Paladin Fitting]
-"
-            )
-            .unwrap(),
-            vec!(Item {
-                type_name: String::from("Paladin"),
-                quantity: 1,
-            },)
-        );
+    fn empty_med_slot() {
+        assert_eq!(parse("[Empty Med slot]").unwrap(), vec!());
+    }
+    #[test]
+    fn empty_low_slot() {
+        assert_eq!(parse("[Empty Low slot]").unwrap(), vec!());
+    }
+    #[test]
+    fn empty_high_slot() {
+        assert_eq!(parse("[Empty High slot]").unwrap(), vec!());
     }
 
     #[test]
@@ -685,7 +683,7 @@ impl Parser {
     /////////
 
     // TODO: synchronize
-    fn item(&mut self) -> Result<Item, String> {
+    fn item(&mut self) -> Result<Option<Item>, String> {
         if self.check(TokenKind::SquareBracketLeft) {
             self.consume(
                 TokenKind::SquareBracketLeft,
@@ -700,6 +698,12 @@ impl Parser {
                     ))
                 }
             };
+            if full_name == "Empty High slot"
+                || full_name == "Empty Med slot"
+                || full_name == "Empty Low slot"
+            {
+                return Ok(None);
+            }
             self.consume(
                 TokenKind::Comma,
                 "bracketed name must be followed by a comma",
@@ -725,10 +729,10 @@ impl Parser {
             //     "bracketed names must be terminated by a right bracket",
             // )?;
 
-            return Ok(Item {
+            return Ok(Some(Item {
                 type_name: full_name,
                 quantity: 1,
-            });
+            }));
         }
         if self.check(TokenKind::String) || self.check(TokenKind::Number) {
             let full_name = match self.full_name() {
@@ -741,10 +745,10 @@ impl Parser {
                 }
             };
             if self.at_end() {
-                return Ok(Item {
+                return Ok(Some(Item {
                     type_name: full_name,
                     quantity: 1,
-                });
+                }));
             }
             if self.check(TokenKind::Space) {
                 self.consume(TokenKind::Space, "checking space must consume space")?;
@@ -755,10 +759,10 @@ impl Parser {
                         Ok(q) => q,
                         Err(e) => return Err(format!("full name followed by tab then number must match a quantity for the number, err: {}", e)),
                     };
-                    return Ok(Item {
+                    return Ok(Some(Item {
                         type_name: full_name,
                         quantity: qty,
-                    });
+                    }));
                 }
 
                 self.full_name()?;
@@ -775,10 +779,10 @@ impl Parser {
                     ))
                 }
             };
-            return Ok(Item {
+            return Ok(Some(Item {
                 type_name: full_name,
                 quantity: qty,
-            });
+            }));
         }
 
         return Err(format!("invalid starting token: {:?}", self.peek()));
@@ -869,20 +873,23 @@ pub fn parse(s: &str) -> Result<Vec<Item>, String> {
         .map(|line| line.trim())
         .filter(|line| line.len() > 0)
         .enumerate()
-        .map(|(i, line)| {
+        .filter_map(|(i, line)| {
             let tokens = match lex(line.trim()) {
                 Ok(tokens) => tokens,
                 Err(errs) => {
                     let s = errs.iter().fold(String::new(), |acc, e| acc + e);
-                    return Err(format!("line {}: {s}", i));
+                    return Some(Err(format!("line {}: {s}", i)));
                 }
             };
             let mut p = Parser {
                 tokens: tokens,
                 current: 0,
             };
-            let item = p.item()?;
-            return Ok(item);
+            match p.item() {
+                Ok(Some(i)) => Some(Ok(i)),
+                Ok(None) => None,
+                Err(e) => Some(Err(e)),
+            }
         })
         .collect();
 
