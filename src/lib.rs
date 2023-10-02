@@ -931,9 +931,9 @@ pub fn lookup_type_name(type_name: String) -> Option<u64> {
     ITEM_TO_CODE.get(&type_name).copied()
 }
 
-pub fn format_tabular(items: Vec<ItemWithId>) -> String {
+pub fn format_x(items: Vec<ItemWithId>) -> String {
     items
         .iter()
-        .map(|item| format!("{}\t{}\n", item.type_name, item.quantity))
+        .map(|item| format!("{} x{}\n", item.type_name, item.quantity))
         .fold("".to_string(), |cur, next| cur + &next)
 }
