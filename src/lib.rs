@@ -7,6 +7,28 @@ mod tests {
     use super::*;
 
     #[test]
+    fn comma_number() {
+        assert_eq!(
+            parse(" Republic Fleet EMP S	3,200	Projectile Ammo	Charge	Cargo Hold").unwrap(),
+            vec!(Item {
+                type_name: String::from("Republic Fleet EMP S"),
+                quantity: 3200,
+            })
+        );
+    }
+
+    #[test]
+    fn comma_number_long() {
+        assert_eq!(
+            parse(" Republic Fleet EMP S	3,200,189	Projectile Ammo	Charge	Cargo Hold").unwrap(),
+            vec!(Item {
+                type_name: String::from("Republic Fleet EMP S"),
+                quantity: 3200189,
+            })
+        );
+    }
+
+    #[test]
     fn intermediate_empty() {
         assert_eq!(
             parse(
@@ -856,18 +878,51 @@ impl Parser {
             };
             return Ok(q);
         } else {
+            let mut num_sections: Vec<i64> = Vec::new();
             let tok = self.consume(TokenKind::Number, "quantities must be a number")?;
+            let q: i64 = match tok.s.parse() {
+                Ok(u) => u,
+                Err(e) => return Err(format!("parsing {} to i64: {}", tok.s, e)),
+            };
+            num_sections.push(q);
+
+            while self.check(TokenKind::Comma) {
+                self.consume(TokenKind::Comma, "checking comma must consume comma")?;
+                let tok = self.consume(
+                    TokenKind::Number,
+                    "numbers followed by comma must also be followed by numbers",
+                )?;
+                let q: i64 = match tok.s.parse() {
+                    Ok(u) => u,
+                    Err(e) => return Err(format!("parsing {} to i64: {}", tok.s, e)),
+                };
+                num_sections.push(q);
+            }
+
+            // Each num_section is comma-separated, meaning it has to be multiplied
+            // by 10^x, where x is a multiple of 3 (increasing with the number of
+            // sections).
+            let result: i64 = num_sections
+                .iter()
+                .enumerate()
+                .map(|(place, num_section)| {
+                    let base: u32 = 10;
+                    let multiple = base.pow((num_sections.len() as u32 - (place + 1) as u32) * 3);
+                    println!(
+                        "num_section: {}, place: {}, multiple: {}",
+                        num_section, place, multiple
+                    );
+                    num_section * (multiple as i64)
+                })
+                .fold(0, |a, b| a + b);
+
             if self.check(TokenKind::Space) {
                 self.consume(TokenKind::Space, "checking space must consume space")?;
             }
             if self.check(TokenKind::X) {
                 self.consume(TokenKind::X, "checking x must consume x")?;
             }
-            let q: i64 = match tok.s.parse() {
-                Ok(u) => u,
-                Err(e) => return Err(format!("parsing {} to i64: {}", tok.s, e)),
-            };
-            return Ok(q);
+            return Ok(result);
         }
     }
 }
