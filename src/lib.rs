@@ -129,6 +129,14 @@ Golem x3
 
     // In order for logic matching "Navy Cap Booster 3200 x9" to be sane,
     // I'm sincerely hoping these cases are invalid in EVE.
+    //
+    // It turns out that they are valid input. Multibuy, for example,
+    // accepts this format -- it is the format output by jEveAssets
+    // when selecting "Copy+ -> EVE MultiBuy". To be able to diff things
+    // from jEveAssets I believe these situations will need to be supported.
+    //
+    // TODO
+    //
     // #[test]
     // fn name_space_quantity() {
     //     assert_eq!(
