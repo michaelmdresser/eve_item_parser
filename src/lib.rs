@@ -442,9 +442,10 @@ Golem x3
         );
 
         assert_eq!(
-            parse("'Vehemence' Compact Large EMP Smartbomb x4").unwrap(),
-            vec![Item {
+            parse_with_id("'Vehemence' Compact Large EMP Smartbomb x4").unwrap(),
+            vec![ItemWithId {
                 type_name: String::from("'Vehemence' Compact Large EMP Smartbomb"),
+                type_id: 9678,
                 quantity: 4,
             }]
         );

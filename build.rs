@@ -14,6 +14,7 @@ fn main() {
     let mut mapping_name_to_id: std::collections::HashMap<String, String> =
         std::collections::HashMap::new();
 
+    println!("cargo::rerun-if-changed=data/invTypes.csv");
     let mut sde_reader = csv::ReaderBuilder::new()
         .from_path("data/invTypes.csv")
         .unwrap();
