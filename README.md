@@ -15,6 +15,5 @@ wget https://www.fuzzwork.co.uk/dump/latest/invTypes.csv
 
 ## CLI testing
 
-``` sh
-echo "Paladin x5" | cargo run
-```
+![image](https://github.com/user-attachments/assets/c04cf937-a62c-4e67-9749-70009a1fcad9)
+
