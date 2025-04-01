@@ -421,6 +421,50 @@ Golem x3
     }
 
     #[test]
+    fn module_with_charge() {
+        assert_eq!(
+            lex("Shield Command Burst II, Shield Harmonizing Charge").unwrap(),
+            vec![
+                string(String::from("Shield")),
+                space(),
+                string(String::from("Command")),
+                space(),
+                string(String::from("Burst")),
+                space(),
+                string(String::from("II")),
+                comma(),
+                space(),
+                string(String::from("Shield")),
+                space(),
+                string(String::from("Harmonizing")),
+                space(),
+                string(String::from("Charge")),
+                eof(),
+            ]
+        );
+        assert_eq!(
+            parse("Shield Command Burst II, Shield Harmonizing Charge").unwrap(),
+            vec![
+                Item {
+                    type_name: String::from("Shield Command Burst II"),
+                    quantity: 1,
+                },
+                Item {
+                    type_name: String::from("Shield Harmonizing Charge"),
+                    // TODO: Should this be the max number that can fit in
+                    // this module?
+                    quantity: 1,
+                }
+            ]
+        );
+
+        // TODO: add this as a test? also this
+        // Capital Capacitor Booster II, Navy Cap Booster 3200
+        // Shield Command Burst II, Shield Harmonizing Charge
+        // Shield Command Burst II, Active Shielding Charge
+    }
+
+    #[test]
     fn module_with_quotes() {
         assert_eq!(
             lex("'Vehemence' Compact Large EMP Smartbomb x4").unwrap(),
@@ -471,10 +515,27 @@ enum TokenKind {
     EOF,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(PartialEq, Clone)]
 struct Token {
     kind: TokenKind,
     s: String,
+}
+
+impl std::fmt::Debug for Token {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self.kind {
+            TokenKind::X => fmt.write_str(" X ")?,
+            TokenKind::SquareBracketLeft => fmt.write_str(" [ ")?,
+            TokenKind::SquareBracketRight => fmt.write_str(" ] ")?,
+            TokenKind::Tab => fmt.write_str(" TAB ")?,
+            TokenKind::Space => fmt.write_str(" SPC ")?,
+            TokenKind::Comma => fmt.write_str(" CMA ")?,
+            TokenKind::String => fmt.write_str(&format!(" '{}' ", self.s))?,
+            TokenKind::Number => fmt.write_str(&format!(" n{} ", self.s))?,
+            TokenKind::EOF => fmt.write_str(" EOF")?,
+        }
+        Ok(())
+    }
 }
 
 fn x() -> Token {
@@ -630,6 +691,7 @@ impl Scanner {
                 .push(format!("Unsupported newline at pos {}", self.lexeme_start)),
             _ => {
                 if is_digit(&c) {
+                    println!("isdigit");
                     self.number()
                 } else if is_namechar(&c) {
                     self.string()
@@ -759,7 +821,7 @@ impl Parser {
     /////////
 
     // TODO: synchronize
-    fn item(&mut self) -> Result<Option<Item>, String> {
+    fn item(&mut self) -> Result<Option<Vec<Item>>, String> {
         if self.check(TokenKind::SquareBracketLeft) {
             self.consume(
                 TokenKind::SquareBracketLeft,
@@ -805,29 +867,71 @@ impl Parser {
             //     "bracketed names must be terminated by a right bracket",
             // )?;
 
-            return Ok(Some(Item {
+            return Ok(Some(vec![Item {
                 type_name: full_name,
                 quantity: 1,
-            }));
+            }]));
         }
         if self.check(TokenKind::String) || self.check(TokenKind::Number) {
             let full_name = match self.full_name() {
                 Ok(s) => s,
                 Err(e) => {
                     return Err(format!(
-                        "starting with a string or number demands a full name match, err: {}",
+                        "starting with a string or number demands a full name match, tokens: {:?}, err: {}",
+                        self.tokens,
                         e
                     ))
                 }
             };
             if self.at_end() {
-                return Ok(Some(Item {
+                return Ok(Some(vec![Item {
                     type_name: full_name,
                     quantity: 1,
-                }));
+                }]));
             }
+
+            // If we consume a name, then get a comma, the next thing should be a charge
+            // loaded into that module
+            if self.check(TokenKind::Comma) {
+                let first_item = Item {
+                    type_name: full_name,
+                    quantity: 1,
+                };
+
+                self.consume(TokenKind::Comma, "checking comma must consume comma")?;
+                self.consume(
+                    TokenKind::Space,
+                    "a loaded charge should be preceded by a comma followed by a space",
+                )?;
+
+                match self.item() {
+                    Ok(Some(items)) => {
+                        if items.len() != 1 {
+                            return Err(format!(
+                                "Unexpected number of loaded charge item types {:?}",
+                                items
+                            ));
+                        }
+
+                        if !self.at_end() {
+                            return Err(format!(
+                                "Unexpectedly at the end for a module with loaded charges {:?}",
+                                self.tokens
+                            ));
+                        }
+
+                        return Ok(Some(vec![first_item, items[0].clone()]));
+                    }
+                    Ok(None) => return Ok(Some(vec![first_item])),
+                    Err(e) => {
+                        return Err(format!("Failed to match sub-item for loaded charge: {e}"));
+                    }
+                }
+            }
+
             if self.check(TokenKind::Space) {
                 self.consume(TokenKind::Space, "checking space must consume space")?;
+                println!("Consumed space");
             } else if self.check(TokenKind::Tab) {
                 self.consume(TokenKind::Tab, "checking tab must consume tab")?;
                 if self.check(TokenKind::Number) {
@@ -835,10 +939,10 @@ impl Parser {
                         Ok(q) => q,
                         Err(e) => return Err(format!("full name followed by tab then number must match a quantity for the number, err: {}", e)),
                     };
-                    return Ok(Some(Item {
+                    return Ok(Some(vec![Item {
                         type_name: full_name,
                         quantity: qty,
-                    }));
+                    }]));
                 }
 
                 self.full_name()?;
@@ -850,15 +954,16 @@ impl Parser {
                 Ok(q) => q,
                 Err(e) => {
                     return Err(format!(
-                        "starting with a full name not followed by EOF demands a quantity, err: {}",
+                        "starting with a full name not followed by EOF demands a quantity, tokens: {:?} err: {}",
+                        self.tokens,
                         e
                     ))
                 }
             };
-            return Ok(Some(Item {
+            return Ok(Some(vec![Item {
                 type_name: full_name,
                 quantity: qty,
-            }));
+            }]));
         }
 
         return Err(format!("invalid starting token: {:?}", self.peek()));
@@ -967,7 +1072,7 @@ impl Parser {
 }
 
 pub fn parse(s: &str) -> Result<Vec<Item>, String> {
-    let items: Result<Vec<Item>, String> = s
+    let results: Vec<Result<Vec<Item>, String>> = s
         .lines()
         .map(|line| line.trim())
         .filter(|line| line.len() > 0)
@@ -977,22 +1082,32 @@ pub fn parse(s: &str) -> Result<Vec<Item>, String> {
                 Ok(tokens) => tokens,
                 Err(errs) => {
                     let s = errs.iter().fold(String::new(), |acc, e| acc + e);
-                    return Some(Err(format!("line {}: {s}", i)));
+                    return Some(Err(format!("line {i}: {s}")));
                 }
             };
-            let mut p = Parser {
-                tokens: tokens,
-                current: 0,
-            };
+            let mut p = Parser { tokens, current: 0 };
             match p.item() {
-                Ok(Some(i)) => Some(Ok(i)),
+                Ok(Some(item)) => Some(Ok(item)),
                 Ok(None) => None,
                 Err(e) => Some(Err(e)),
             }
         })
         .collect();
 
-    return items;
+    let mut items = Vec::new();
+    let mut errors = Vec::new();
+    for result in results {
+        match result {
+            Ok(is) => items.extend(is),
+            Err(e) => errors.push(e),
+        }
+    }
+
+    if errors.len() > 0 {
+        return Err(format!("{:?}", errors));
+    }
+
+    return Ok(items);
 }
 
 include!(concat!(env!("OUT_DIR"), "/codegen.rs"));
