@@ -691,7 +691,6 @@ impl Scanner {
                 .push(format!("Unsupported newline at pos {}", self.lexeme_start)),
             _ => {
                 if is_digit(&c) {
-                    println!("isdigit");
                     self.number()
                 } else if is_namechar(&c) {
                     self.string()
@@ -931,7 +930,6 @@ impl Parser {
 
             if self.check(TokenKind::Space) {
                 self.consume(TokenKind::Space, "checking space must consume space")?;
-                println!("Consumed space");
             } else if self.check(TokenKind::Tab) {
                 self.consume(TokenKind::Tab, "checking tab must consume tab")?;
                 if self.check(TokenKind::Number) {
