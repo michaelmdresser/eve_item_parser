@@ -15,5 +15,5 @@ wget https://www.fuzzwork.co.uk/dump/latest/invTypes.csv
 
 ## CLI testing
 
-![image](https://github.com/user-attachments/assets/c04cf937-a62c-4e67-9749-70009a1fcad9)
+![](media/parse_cli_screenshot.png)
 
