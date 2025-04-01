@@ -419,6 +419,36 @@ Golem x3
             }]
         );
     }
+
+    #[test]
+    fn module_with_quotes() {
+        assert_eq!(
+            lex("'Vehemence' Compact Large EMP Smartbomb x4").unwrap(),
+            vec![
+                string(String::from("'Vehemence'")),
+                space(),
+                string(String::from("Compact")),
+                space(),
+                string(String::from("Large")),
+                space(),
+                string(String::from("EMP")),
+                space(),
+                string(String::from("Smartbomb")),
+                space(),
+                x(),
+                number(String::from("4")),
+                eof(),
+            ]
+        );
+
+        assert_eq!(
+            parse("'Vehemence' Compact Large EMP Smartbomb x4").unwrap(),
+            vec![Item {
+                type_name: String::from("'Vehemence' Compact Large EMP Smartbomb"),
+                quantity: 4,
+            }]
+        );
+    }
 }
 
 // Lexer/scanner borrowed from dicelang which is heavily inspired by Crafting Interpreters
