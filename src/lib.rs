@@ -494,6 +494,33 @@ Golem x3
             }]
         );
     }
+
+    #[test]
+    fn defunct_offline_syntax() {
+        assert_eq!(
+            lex("Armor Command Burst II /OFFLINE").unwrap(),
+            vec![
+                string(String::from("Armor")),
+                space(),
+                string(String::from("Command")),
+                space(),
+                string(String::from("Burst")),
+                space(),
+                string(String::from("II")),
+                space(),
+                string(String::from("/OFFLINE")),
+                eof(),
+            ]
+        );
+        assert_eq!(
+            parse_with_id("Armor Command Burst II /OFFLINE").unwrap(),
+            vec![ItemWithId {
+                type_name: String::from("Armor Command Burst II"),
+                type_id: 43552,
+                quantity: 1,
+            }]
+        )
+    }
 }
 
 // Lexer/scanner borrowed from dicelang which is heavily inspired by Crafting Interpreters
@@ -610,10 +637,14 @@ fn is_digit(c: &char) -> bool {
 // TODO: UTF-16 necessary because of eve?
 fn is_namechar(c: &char) -> bool {
     match c {
-        // hyphen because of e.g. implant - basic
-        // asterisk because of "Paladin" vs. "Paladin*"
-        // apostrophe because of e.g. "Joe's Paladin"
-        'A'..='Z' | 'a'..='z' | '-' | '*' | '\'' => true,
+
+        'A'..='Z'
+            | 'a'..='z'
+            | '-' // hyphen because of e.g. implant - basic
+            | '*' // asterisk because of "Paladin" vs. "Paladin*"
+            | '\'' // apostrophe because of e.g. "Joe's Paladin"
+            | '/' // forward slash because of weird /OFFLINE syntax
+            => true,
         _ => false,
     }
 }
@@ -975,6 +1006,12 @@ impl Parser {
             } else if self.check(TokenKind::String) {
                 let tok =
                     self.consume(TokenKind::String, "checking a string must consume a string")?;
+
+                // Some fits have something like this "Armor Command Burst II /OFFLINE" where the
+                // /OFFLINE means nothing for the sake of the item diff.
+                if tok.s == "/OFFLINE" {
+                    continue;
+                }
                 full_string.push_str(&tok.s);
             } else if self.check(TokenKind::Space) {
                 self.consume(TokenKind::Space, "checking a space must consume a space")?;
