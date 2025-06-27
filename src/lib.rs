@@ -521,6 +521,39 @@ Golem x3
             }]
         )
     }
+
+    #[test]
+    fn module_with_period() {
+        assert_eq!(
+            lex("Eifyr and Co. 'Rogue' Navigation NN-602 x1").unwrap(),
+            vec![
+                string(String::from("Eifyr")),
+                space(),
+                string(String::from("and")),
+                space(),
+                string(String::from("Co.")),
+                space(),
+                string(String::from("'Rogue'")),
+                space(),
+                string(String::from("Navigation")),
+                space(),
+                string(String::from("NN-602")),
+                space(),
+                x(),
+                number(String::from("1")),
+                eof(),
+            ]
+        );
+
+        assert_eq!(
+            parse_with_id("'Vehemence' Compact Large EMP Smartbomb x4").unwrap(),
+            vec![ItemWithId {
+                type_name: String::from("'Vehemence' Compact Large EMP Smartbomb"),
+                type_id: 9678,
+                quantity: 4,
+            }]
+        );
+    }
 }
 
 // Lexer/scanner borrowed from dicelang which is heavily inspired by Crafting Interpreters
@@ -636,6 +669,13 @@ fn is_digit(c: &char) -> bool {
 }
 // TODO: UTF-16 necessary because of eve?
 fn is_namechar(c: &char) -> bool {
+    // Digits can be in the middle of names. I don't think digits can start
+    // names. We mostly handle this in the parser by checking is_digit to do a
+    // number parse before we try to do a name parse.
+    if is_digit(c) {
+        return true;
+    }
+
     match c {
 
         'A'..='Z'
@@ -644,6 +684,7 @@ fn is_namechar(c: &char) -> bool {
             | '*' // asterisk because of "Paladin" vs. "Paladin*"
             | '\'' // apostrophe because of e.g. "Joe's Paladin"
             | '/' // forward slash because of weird /OFFLINE syntax
+            | '.' // period because of e.g. "Eifyr and Co."
             => true,
         _ => false,
     }
