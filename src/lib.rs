@@ -127,54 +127,48 @@ Golem x3
         );
     }
 
-    // In order for logic matching "Navy Cap Booster 3200 x9" to be sane,
-    // I'm sincerely hoping these cases are invalid in EVE.
-    //
     // It turns out that they are valid input. Multibuy, for example,
     // accepts this format -- it is the format output by jEveAssets
     // when selecting "Copy+ -> EVE MultiBuy". To be able to diff things
     // from jEveAssets I believe these situations will need to be supported.
-    //
-    // TODO
-    //
-    // #[test]
-    // fn name_space_quantity() {
-    //     assert_eq!(
-    //         lex("Paladin 2").unwrap(),
-    //         vec![
-    //             string(String::from("Paladin")),
-    //             space(),
-    //             number(String::from("2")),
-    //             eof(),
-    //         ]
-    //     );
-    //     assert_eq!(
-    //         parse("Paladin 2").unwrap(),
-    //         vec![Item {
-    //             type_name: String::from("Paladin"),
-    //             quantity: 2
-    //         }]
-    //     );
-    // }
-    // #[test]
-    // fn name_star_space_quantity() {
-    //     assert_eq!(
-    //         lex("Paladin* 2").unwrap(),
-    //         vec![
-    //             string(String::from("Paladin*")),
-    //             space(),
-    //             number(String::from("2")),
-    //             eof(),
-    //         ]
-    //     );
-    //     assert_eq!(
-    //         parse("Paladin* 2").unwrap(),
-    //         vec![Item {
-    //             type_name: String::from("Paladin"),
-    //             quantity: 2
-    //         }]
-    //     );
-    // }
+    #[test]
+    fn name_space_quantity() {
+        assert_eq!(
+            lex("Paladin 2").unwrap(),
+            vec![
+                string(String::from("Paladin")),
+                space(),
+                number(String::from("2")),
+                eof(),
+            ]
+        );
+        assert_eq!(
+            parse("Paladin 2").unwrap(),
+            vec![Item {
+                type_name: String::from("Paladin"),
+                quantity: 2
+            }]
+        );
+    }
+    #[test]
+    fn name_star_space_quantity() {
+        assert_eq!(
+            lex("Paladin* 2").unwrap(),
+            vec![
+                string(String::from("Paladin*")),
+                space(),
+                number(String::from("2")),
+                eof(),
+            ]
+        );
+        assert_eq!(
+            parse("Paladin* 2").unwrap(),
+            vec![Item {
+                type_name: String::from("Paladin"),
+                quantity: 2
+            }]
+        );
+    }
 
     #[test]
     fn name_space_x_quantity() {
@@ -877,8 +871,20 @@ impl Parser {
         let next = self.peek();
         return kind == next.kind;
     }
+    // Check the second. This is lookahead and makes me sad but is required for
+    // a multibuy format, I think, unless I'm missing something quite clever.
+    fn check2(&self, kind: TokenKind) -> bool {
+        if self.at_end() {
+            return false;
+        }
+        let next2 = self.peek2();
+        return kind == next2.kind;
+    }
     fn peek(&self) -> Token {
         return self.tokens[self.current].clone();
+    }
+    fn peek2(&self) -> Token {
+        return self.tokens[self.current + 1].clone();
     }
     fn consume(&mut self, kind: TokenKind, message: &str) -> Result<Token, String> {
         if self.check(kind) {
@@ -1042,6 +1048,11 @@ impl Parser {
         let mut full_string: String = "".to_owned();
         loop {
             if self.check(TokenKind::Number) {
+                // A number followed by EOF indicates a quantity. E.g. "Paladin 2" is 2 Paladins
+                if self.check2(TokenKind::EOF) {
+                    break;
+                }
+
                 let tok = self.consume(TokenKind::Number, "checking number must consume number")?;
                 full_string.push_str(&format!("{}", tok.s));
             } else if self.check(TokenKind::String) {
